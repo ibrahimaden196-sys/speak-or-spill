@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spin & Spill — Fifth Sip</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#1E4D2B;--green-mid:#26422A;
+  --vanilla:#F3E5AB;--flame:#E25822;--flame-mid:#EA672D;
+  --bistre:#5D372A;--columbia:#D2E8FF;
+  --bg:#0D1810;--surface:rgba(243,229,171,0.04);
+  --border:rgba(243,229,171,0.1);--muted:rgba(243,229,171,0.45);
+  --red:#dc2626;--red-mid:#ef4444;
+}
+html,body{height:100%;overflow-x:hidden}
+body{background:var(--bg);color:var(--vanilla);font-family:'DM Mono',monospace;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.6}
+.screen{display:none;position:relative;z-index:1}
+.screen.active{display:flex;flex-direction:column;align-items:center;min-height:100vh}
+
+/* SETUP */
+#setupScreen{background:radial-gradient(ellipse at 20% 0%,rgba(226,88,34,.12) 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,rgba(30,77,43,.25) 0%,transparent 60%),var(--bg)}
+.brand-bar{width:100%;padding:1.5rem 1.5rem 0;display:flex;justify-content:space-between;align-items:flex-start}
+.brand-name{font-size:.65rem;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--flame);margin-bottom:.1rem}
+.brand-tag{font-size:.55rem;color:var(--muted);letter-spacing:.1em}
+.hero{padding:2.5rem 1.5rem 0;width:100%;max-width:480px;text-align:center}
+.game-title{font-family:'Playfair Display',serif;font-size:clamp(2.8rem,8vw,4rem);font-weight:900;line-height:.9;letter-spacing:-2px;margin-bottom:.5rem}
+.game-title em{color:var(--flame);font-style:italic}
+.game-sub{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:2.5rem}
+.divider{width:100%;max-width:420px;height:1px;background:var(--border);margin:0 auto 1.5rem}
+.slabel{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--flame);margin-bottom:.7rem;text-align:left;width:100%;max-width:420px;padding:0 1.5rem}
+.mode-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;width:100%;max-width:420px;padding:0 1.5rem;margin-bottom:1.5rem}
+.mode-btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.75rem .5rem;cursor:pointer;color:var(--muted);font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.08em;transition:all .2s;text-align:center;line-height:1.4}
+.mode-btn .mi{font-size:1.2rem;display:block;margin-bottom:.3rem}
+.mode-btn:hover,.mode-btn.sel{background:rgba(226,88,34,.12);border-color:var(--flame);color:var(--vanilla)}
+.players-wrap{width:100%;max-width:420px;padding:0 1.5rem;margin-bottom:1rem}
+.p-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.45rem}
+.p-row input{flex:1;background:rgba(243,229,171,.05);border:1px solid var(--border);border-radius:6px;padding:.55rem .8rem;color:var(--vanilla);font-family:'DM Mono',monospace;font-size:.78rem;outline:none;transition:border-color .2s;letter-spacing:.03em}
+.p-row input:focus{border-color:rgba(226,88,34,.6)}
+.p-row input::placeholder{color:var(--muted)}
+.cpip{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:all .15s}
+.cpip.sel{border-color:var(--vanilla);transform:scale(1.15)}
+.del-btn{width:26px;height:26px;border-radius:4px;border:1px solid rgba(226,88,34,.2);background:none;color:var(--flame);cursor:pointer;font-size:.75rem;flex-shrink:0;opacity:.7}
+.del-btn:hover{opacity:1}
+.add-btn{width:100%;background:none;border:1px dashed rgba(243,229,171,.2);border-radius:6px;padding:.5rem;color:var(--muted);cursor:pointer;font-family:'DM Mono',monospace;font-size:.7rem;letter-spacing:.08em;transition:all .2s;margin-bottom:1.5rem}
+.add-btn:hover{border-color:var(--flame);color:var(--flame)}
+.start-btn{width:calc(100% - 3rem);max-width:420px;background:var(--flame);border:none;border-radius:8px;padding:1rem;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;font-style:italic;color:white;cursor:pointer;transition:all .2s;margin-bottom:2rem}
+.start-btn:hover{background:var(--flame-mid);transform:translateY(-1px)}
+.brand-foot{font-size:.55rem;letter-spacing:.15em;color:var(--muted);text-align:center;padding:.5rem;text-transform:uppercase}
+
+/* GAME */
+#gameScreen{background:radial-gradient(ellipse at 50% -10%,rgba(30,77,43,.35) 0%,transparent 55%),var(--bg);justify-content:flex-start}
+.g-header{width:100%;display:flex;justify-content:space-between;align-items:center;padding:.85rem 1.25rem;border-bottom:1px solid var(--border);background:rgba(13,24,16,.8);backdrop-filter:blur(12px);position:sticky;top:0;z-index:20}
+.g-logo{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;font-style:italic;color:var(--vanilla);letter-spacing:-.5px}
+.g-logo span{color:var(--flame)}
+.g-acts{display:flex;gap:.4rem}
+.g-btn{background:var(--surface);border:1px solid var(--border);border-radius:6px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem;color:var(--muted);transition:all .2s}
+.g-btn:hover{border-color:var(--flame);color:var(--flame)}
+.turn-section{width:100%;text-align:center;padding:1rem 1rem .4rem}
+.turn-ey{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem}
+.turn-nm{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;font-style:italic;letter-spacing:-.5px;transition:color .3s}
+.turn-nx{font-size:.65rem;color:var(--muted);letter-spacing:.08em;margin-top:.1rem}
+
+/* COUNTDOWN */
+.cd-wrap{width:100%;display:flex;justify-content:center;padding:.15rem 0;height:0;overflow:hidden;transition:height .3s}
+.cd-wrap.show{height:64px}
+.cd-ring{position:relative;width:52px;height:52px}
+.cd-ring svg{position:absolute;top:0;left:0;transform:rotate(-90deg)}
+.cd-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:900;color:#ef4444}
+
+/* WHEEL */
+.wheel-zone{position:relative;width:100%;display:flex;justify-content:center;padding:.3rem 0}
+.wheel-outer{position:relative;width:270px;height:270px}
+.wheel-outer canvas{width:270px;height:270px;display:block}
+.wheel-ptr{position:absolute;top:-13px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:22px solid var(--vanilla);filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));z-index:5}
+.wheel-hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;z-index:5;cursor:pointer;transition:border-color .2s}
+.wheel-hub:hover{border-color:var(--flame)}
+.wheel-hub-txt{font-family:'DM Mono',monospace;font-size:.4rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--flame);line-height:1.2;text-align:center}
+.spin-outer{width:100%;padding:.45rem 1.5rem;display:flex;justify-content:center}
+.spin-btn{background:var(--green);border:1px solid rgba(243,229,171,.15);border-radius:8px;padding:.7rem 2rem;font-family:'Playfair Display',serif;font-size:.9rem;font-weight:700;font-style:italic;color:var(--vanilla);cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(30,77,43,.4);width:100%;max-width:360px}
+.spin-btn:hover{background:#26422A}
+.spin-btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none}
+
+/* QUESTION CARD */
+.q-card{display:none;width:calc(100% - 2rem);max-width:440px;margin:.4rem auto 0;background:rgba(243,229,171,.04);border:1px solid var(--border);border-radius:12px;padding:1rem 1.3rem;position:relative;overflow:hidden}
+.q-card.show{display:block;animation:cIn .35s ease}
+@keyframes cIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.q-stripe{position:absolute;top:0;left:0;width:3px;height:100%}
+.q-cat{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+.q-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.q-cat-lbl{font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;font-weight:500}
+.q-num{font-size:.58rem;color:var(--muted);margin-left:auto;letter-spacing:.08em}
+.q-text{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;line-height:1.45;color:var(--vanilla);margin-bottom:.9rem}
+.q-acts{display:flex;gap:.5rem}
+.q-act{flex:1;background:rgba(243,229,171,.06);border:1px solid var(--border);border-radius:6px;padding:.45rem .4rem;font-family:'DM Mono',monospace;font-size:.62rem;font-weight:500;color:var(--vanilla);cursor:pointer;transition:all .2s;letter-spacing:.04em;text-align:center}
+.q-act:hover{background:rgba(243,229,171,.1)}
+.q-act.flame{background:var(--flame);border-color:var(--flame);color:white}
+.q-act.flame:hover{background:var(--flame-mid)}
+.q-act:disabled{opacity:.3;cursor:not-allowed}
+.skip-left{font-size:.58rem;color:var(--muted);text-align:center;margin-top:.35rem;letter-spacing:.06em}
+
+/* PLAYERS BAR */
+.p-bar{width:100%;padding:.55rem 1rem;display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;margin-top:.1rem}
+.p-bar::-webkit-scrollbar{display:none}
+.p-chip{display:flex;align-items:center;gap:.35rem;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:.28rem .65rem .28rem .35rem;white-space:nowrap;flex-shrink:0;transition:all .2s}
+.p-chip.active{border-color:var(--flame);background:rgba(226,88,34,.1)}
+.p-pip{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:500;color:white;flex-shrink:0}
+.p-chip-nm{font-size:.7rem;letter-spacing:.03em}
+.p-chip-sc{font-size:.6rem;color:var(--muted);margin-left:.1rem}
+
+/* FORFEIT OVERLAY */
+#fOverlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2.5rem;overflow-y:auto}
+#fOverlay.show{display:flex;animation:redPulse .5s ease 2}
+@keyframes redPulse{0%,100%{box-shadow:inset 0 0 0 rgba(220,38,38,0)}50%{box-shadow:inset 0 0 100px rgba(220,38,38,.5)}}
+@keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-7px)}20%,40%,60%,80%{transform:translateX(7px)}}
+.shaking{animation:shake .5s ease}
+.f-badge{background:linear-gradient(135deg,#dc2626,#7f1d1d);border:1px solid rgba(239,68,68,.4);border-radius:6px;padding:.3rem .9rem;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.8);margin-bottom:1rem}
+.f-headline{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;color:#ef4444;text-align:center;line-height:1;letter-spacing:-1px;margin-bottom:.3rem;text-shadow:0 0 40px rgba(239,68,68,.6)}
+.f-sub{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:1.5rem;text-align:center;max-width:280px;text-align:center}
+
+/* FORFEIT WHEEL */
+.fw-zone{position:relative;display:flex;justify-content:center;margin-bottom:.8rem}
+.fw-outer{position:relative;width:220px;height:220px}
+.fw-outer canvas{width:220px;height:220px;display:block;filter:drop-shadow(0 0 20px rgba(220,38,38,.5))}
+.fw-ptr{position:absolute;top:-11px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:20px solid #ef4444;filter:drop-shadow(0 0 6px rgba(239,68,68,.8));z-index:5}
+.fw-hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:#0D1810;border:2px solid rgba(239,68,68,.3);display:flex;align-items:center;justify-content:center;z-index:5}
+.fw-hub-txt{font-family:'DM Mono',monospace;font-size:.36rem;letter-spacing:.06em;text-transform:uppercase;color:#ef4444;text-align:center;line-height:1.2}
+.f-spin-btn{background:linear-gradient(135deg,#dc2626,#7f1d1d);border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:.75rem 2rem;font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;font-style:italic;color:white;cursor:pointer;transition:all .2s;margin-bottom:1rem;box-shadow:0 0 30px rgba(220,38,38,.35)}
+.f-spin-btn:hover{box-shadow:0 0 50px rgba(220,38,38,.6);transform:scale(1.02)}
+.f-spin-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* FORFEIT CHALLENGE CARD */
+.fc-card{display:none;width:calc(100% - 2.5rem);max-width:380px;background:rgba(220,38,38,.08);border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:1rem 1.3rem;margin-bottom:.8rem;animation:cIn .35s ease;position:relative;overflow:hidden}
+.fc-card.show{display:block}
+.fc-stripe{position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(to bottom,#ef4444,#dc2626)}
+.fc-cat{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+.fc-cat-dot{width:7px;height:7px;border-radius:50%;background:#ef4444}
+.fc-cat-txt{font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:#ef4444}
+.fc-text{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;line-height:1.4;color:var(--vanilla);margin-bottom:.9rem}
+.fc-acts{display:flex;gap:.5rem}
+.fc-act{flex:1;border-radius:6px;padding:.5rem .4rem;font-family:'DM Mono',monospace;font-size:.6rem;font-weight:500;cursor:pointer;transition:all .2s;letter-spacing:.04em;text-align:center;border:1px solid var(--border);background:rgba(243,229,171,.06);color:var(--vanilla)}
+.fc-act:hover{background:rgba(243,229,171,.1)}
+.fc-act.danger{background:#dc2626;border-color:#dc2626;color:white}
+.fc-act.danger:hover{background:#ef4444}
+
+/* CHAOS CARD */
+.chaos-card{display:none;width:calc(100% - 2.5rem);max-width:380px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:12px;padding:1.1rem 1.3rem;margin-bottom:.8rem;animation:cIn .35s ease}
+.chaos-card.show{display:block}
+.chaos-title{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;font-style:italic;color:#f97316;margin-bottom:.2rem}
+.chaos-sub{font-size:.6rem;color:rgba(255,255,255,.45);letter-spacing:.08em;margin-bottom:.7rem}
+.chaos-consequence{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--vanilla);margin-bottom:.9rem;padding:.65rem;background:rgba(249,115,22,.1);border-radius:8px;border-left:3px solid #f97316}
+.chaos-ok{width:100%;background:#f97316;border:none;border-radius:8px;padding:.7rem;font-family:'Playfair Display',serif;font-style:italic;font-weight:700;font-size:.95rem;color:white;cursor:pointer;transition:all .2s}
+.chaos-ok:hover{opacity:.85}
+.f-close-row{width:calc(100% - 2.5rem);max-width:380px;margin-bottom:2rem;margin-top:.3rem}
+.f-close-btn{display:none;width:100%;background:none;border:1px solid rgba(243,229,171,.12);border-radius:8px;padding:.6rem;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;color:var(--muted);cursor:pointer;transition:all .2s}
+.f-close-btn:hover{border-color:rgba(243,229,171,.25);color:var(--vanilla)}
+
+/* LEADERBOARD */
+#lbScreen{background:var(--bg);justify-content:flex-start}
+.lb-top{width:100%;padding:2rem 1.5rem 1.2rem;text-align:center;border-bottom:1px solid var(--border);background:radial-gradient(ellipse at 50% 0%,rgba(226,88,34,.1) 0%,transparent 60%)}
+.lb-ey{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--flame);margin-bottom:.5rem}
+.lb-title{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;font-style:italic;margin-bottom:.25rem}
+.lb-meta{font-size:.65rem;color:var(--muted);letter-spacing:.06em}
+.lb-rows{width:100%;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.45rem}
+.lb-row{display:flex;align-items:center;gap:.75rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem}
+.lb-row.first{border-color:rgba(226,88,34,.4);background:rgba(226,88,34,.07)}
+.lb-rank{font-family:'Playfair Display',serif;font-size:.9rem;font-weight:700;font-style:italic;width:22px;text-align:center;color:var(--muted)}
+.lb-rank.g1{color:var(--flame)}
+.lb-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:500;color:white;flex-shrink:0}
+.lb-pnm{flex:1;font-family:'Playfair Display',serif;font-style:italic;font-size:.95rem}
+.lb-pts{font-family:'DM Mono',monospace;font-weight:500;font-size:.85rem;color:var(--flame)}
+.lb-acts{display:flex;gap:.6rem;padding:1rem 1.25rem;width:100%}
+.lb-a{flex:1;border-radius:8px;padding:.75rem;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;cursor:pointer;transition:all .2s;border:1px solid var(--border);background:var(--surface);color:var(--vanilla);letter-spacing:.06em}
+.lb-a.main{background:var(--flame);border-color:var(--flame);color:white}
+.lb-a:hover{opacity:.85}
+.toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:rgba(17,29,19,.95);border:1px solid var(--flame);border-radius:8px;padding:.55rem 1.1rem;font-size:.72rem;font-family:'DM Mono',monospace;letter-spacing:.06em;color:var(--vanilla);z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;backdrop-filter:blur(12px);white-space:nowrap}
+.toast.on{opacity:1}
+.cf{position:fixed;border-radius:2px;animation:cfFall linear forwards;pointer-events:none;z-index:9998;top:-10px}
+@keyframes cfFall{to{top:105vh;transform:rotate(540deg) translateX(80px)}}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div class="screen active" id="setupScreen">
+  <div class="brand-bar">
+    <div>
+      <div class="brand-name">Fifth Sip</div>
+      <div class="brand-tag">by tenthirty projects</div>
+    </div>
+    <div style="font-size:1.4rem;opacity:.7">☕</div>
+  </div>
+  <div class="hero">
+    <div class="game-title">Spin &amp;<br><em>Spill</em></div>
+    <div class="game-sub">the conversation game that goes deep</div>
+  </div>
+  <div class="divider"></div>
+  <div class="slabel">// mode</div>
+  <div class="mode-row">
+    <button class="mode-btn sel" data-mode="chill" onclick="setMode(this)"><span class="mi">🌙</span>chill vibes</button>
+    <button class="mode-btn" data-mode="deep" onclick="setMode(this)"><span class="mi">🧠</span>deep talk</button>
+    <button class="mode-btn" data-mode="couples" onclick="setMode(this)"><span class="mi">❤️</span>couples</button>
+    <button class="mode-btn" data-mode="chaos" onclick="setMode(this)"><span class="mi">🔥</span>chaos mode</button>
+  </div>
+  <div class="slabel">// players</div>
+  <div class="players-wrap">
+    <div id="pInputs"></div>
+    <button class="add-btn" onclick="addPlayer()">+ add player</button>
+  </div>
+  <button class="start-btn" onclick="startGame()">Start Playing →</button>
+  <div class="brand-foot">fifth sip · tenthirty projects · spin &amp; spill v3</div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="gameScreen">
+  <div class="g-header">
+    <div class="g-logo">Spin &amp; <span>Spill</span></div>
+    <div class="g-acts">
+      <div class="g-btn" id="muteBtn" onclick="toggleMute()">🔊</div>
+      <div class="g-btn" onclick="showLB()">🏆</div>
+      <div class="g-btn" onclick="goHome()">⌂</div>
+    </div>
+  </div>
+  <div class="turn-section">
+    <div class="turn-ey">it's time for</div>
+    <div class="turn-nm" id="tName"></div>
+    <div class="turn-nx" id="tNext"></div>
+  </div>
+  <div class="cd-wrap" id="cdWrap">
+    <div class="cd-ring">
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(220,38,38,.2)" stroke-width="3"/>
+        <circle id="cdArc" cx="26" cy="26" r="22" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="0" style="transition:stroke-dashoffset .9s linear"/>
+      </svg>
+      <div class="cd-num" id="cdNum">15</div>
+    </div>
+  </div>
+  <div class="wheel-zone">
+    <div class="wheel-outer">
+      <canvas id="wCanvas" width="540" height="540"></canvas>
+      <div class="wheel-ptr"></div>
+      <div class="wheel-hub" onclick="doSpin()"><div class="wheel-hub-txt">SPIN<br>IT</div></div>
+    </div>
+  </div>
+  <div class="spin-outer">
+    <button class="spin-btn" id="spinBtn" onclick="doSpin()">⚡ Spin the Wheel</button>
+  </div>
+  <div class="q-card" id="qCard">
+    <div class="q-stripe" id="qStripe"></div>
+    <div class="q-cat">
+      <div class="q-dot" id="qDot"></div>
+      <div class="q-cat-lbl" id="qCatLbl"></div>
+      <div class="q-num" id="qNum"></div>
+    </div>
+    <div class="q-text" id="qText"></div>
+    <div class="q-acts">
+      <button class="q-act" id="skipBtn" onclick="skipQ()">⏭ Skip → Forfeit</button>
+      <button class="q-act flame" onclick="answered()">✓ Answered +2 pts</button>
+    </div>
+    <div class="skip-left" id="skipLeft"></div>
+  </div>
+  <div class="p-bar" id="pBar"></div>
+</div>
+
+<!-- FORFEIT OVERLAY -->
+<div id="fOverlay">
+  <div class="f-badge">⚠ forfeit activated</div>
+  <div class="f-headline">QUESTION<br>DODGED.</div>
+  <div class="f-sub" id="fPlayerSub">player must complete a forfeit</div>
+  <div class="fw-zone">
+    <div class="fw-outer">
+      <canvas id="fwCanvas" width="440" height="440"></canvas>
+      <div class="fw-ptr"></div>
+      <div class="fw-hub"><div class="fw-hub-txt">SPIN<br>FATE</div></div>
+    </div>
+  </div>
+  <button class="f-spin-btn" id="fSpinBtn" onclick="spinForfeit()">🎡 Spin the Forfeit Wheel</button>
+  <div class="fc-card" id="fcCard">
+    <div class="fc-stripe"></div>
+    <div class="fc-cat">
+      <div class="fc-cat-dot"></div>
+      <div class="fc-cat-txt" id="fcCatTxt"></div>
+    </div>
+    <div class="fc-text" id="fcText"></div>
+    <div class="fc-acts">
+      <button class="fc-act danger" onclick="refuseForfeit()">✗ Refuse (Double Dodge!)</button>
+      <button class="fc-act" onclick="completedForfeit()">✓ Done! +1 pt</button>
+    </div>
+  </div>
+  <div class="chaos-card" id="chaosCard">
+    <div class="chaos-title">⚡ Ultimate Chaos</div>
+    <div class="chaos-sub">double dodge — the group decides your fate</div>
+    <div class="chaos-consequence" id="chaosConseq"></div>
+    <button class="chaos-ok" onclick="closeForfeit(true)">Accept fate — continue</button>
+  </div>
+  <div class="f-close-row">
+    <button class="f-close-btn" id="fCloseBtn" onclick="closeForfeit(false)">← back (no forfeit)</button>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="screen" id="lbScreen">
+  <div class="lb-top">
+    <div class="lb-ey">// fifth sip</div>
+    <div class="lb-title">The Spill Board</div>
+    <div class="lb-meta" id="lbMeta"></div>
+  </div>
+  <div class="lb-rows" id="lbRows"></div>
+  <div class="lb-acts">
+    <button class="lb-a" onclick="backToGame()">← keep playing</button>
+    <button class="lb-a main" onclick="endGame()">🎉 end game</button>
+  </div>
+  <div class="brand-foot">fifth sip · tenthirty projects</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────
+const DB={
+  relationships:{color:'#E25822',label:'❤️ Relationships',q:["What makes someone unforgettable to you?","What's your biggest relationship green flag?","What's your biggest red flag?","Have you ever fallen for the wrong person?","What's something love taught you painfully?","What's your ideal date night?","Have you ever loved silently?","What's harder: trusting or forgiving?","What instantly makes someone attractive?","What's your attachment style?","What scares you most in relationships?","Have you ever sabotaged something good?","What does loyalty mean to you?","What's your love language?","What's the sweetest thing someone did for you?","What's a dealbreaker?","Have you ever missed someone you shouldn't?","What's more important: chemistry or peace?","What does commitment mean to you?","Have you ever faked feelings?","What kind of partner do you want?","What's something you regret in love?","Can people change for love?","Have you ever been heartbroken?","What heals heartbreak fastest?","What makes you feel safe?","What does emotional maturity look like?","Would you forgive betrayal?","What's one lesson from your last relationship?","What does real love feel like?"]},
+  life:{color:'#D2E8FF',label:'🧠 Life',q:["What's life teaching you right now?","What are you still healing from?","What scares you about the future?","What motivates you?","What does success mean to you?","What's your biggest dream?","What's your biggest failure?","What changed your life forever?","What are you proud of?","What do you overthink most?","What's something you wish people understood?","What's your greatest strength?","What's your weakness?","What gives your life meaning?","What's your biggest fear?","What would your younger self think of you?","What do you want more of?","What do you want less of?","What drains your energy?","What brings you peace?","What are you chasing?","What would make this year successful?","What lesson took longest to learn?","What's something you're avoiding?","What inspires you?","What keeps you going?","What's your comfort zone?","What do you need to let go of?","What's your purpose?","What matters most right now?"]},
+  friendship:{color:'#F3E5AB',label:'🤝 Friendship',q:["What makes a real friend?","What breaks friendship trust?","Who knows you best?","What's your funniest friendship memory?","Have you outgrown a friendship?","What makes you feel valued?","What annoys you in friendships?","What's the best advice a friend gave?","Have you forgiven a friend?","What matters most: honesty or kindness?","Have you ever fake-laughed at a friend's joke?","What's your friendship love language?","What would make you cut ties?","What's your ideal friend group?","Have you ever felt left out?","What do friendships teach us?","What's hard about keeping friends?","Who would answer your call at 3am?","Have you disappointed a friend?","What does loyalty look like?","What's your toxic friendship trait?","What's your best friendship trait?","What's unforgettable with friends?","What's one friendship regret?","How do you rebuild trust?"]},
+  chaos:{color:'#EA672D',label:'😂 Chaos',q:["Speak in slow motion next round","Act out your last crush","Dance for 15 seconds","Sing your answer","Speak in an accent","Do your best villain laugh","Text the 5th person on your list 'Interesting.'","Describe your crush as food","Pretend to propose to a pillow","Roast yourself","Walk dramatically","Act like a cat","Speak only in questions","Make a fake apology speech","Do a commercial for toothpaste","Pretend to cry dramatically","Tell an embarrassing story","Explain love to an alien","Narrate your life","Freeze for 20 seconds","Talk like a robot","Make your best celebrity impression","Compliment everyone weirdly","Invent a dance","Laugh without smiling"]},
+  hotSeat:{color:'#1E4D2B',label:'🔥 Hot Seat',q:["Who's most likely to ghost?","Who gives best advice?","Who falls in love fastest?","Who's secretly the funniest?","Who would survive longest alone?","Who's most mysterious?","Who overthinks most?","Who would become famous?","Who's hardest to read?","Who has best style?","Who would win an argument?","Who's most loyal?","Who hides emotions best?","Who's most romantic?","Who's most chaotic?","Who would disappear randomly?","Who's secretly sensitive?","Who's best under pressure?","Who would make the best parent?","Who changes most after heartbreak?"]},
+  wildCard:{color:'#5D372A',label:'🎯 Wild Card',q:["Spin again!","Skip your turn","Ask anyone any question","Swap seats","Choose who answers next","Everyone answers this one","Tell a secret","Compliment someone right now","Share a memory with this group","Reveal your lock screen","Trade turns with someone","Reverse the turn order","Pick the next category","Everyone votes on a challenge","Random truth — no filter","Group challenge — you decide","Pick someone to roast kindly","Share an unpopular opinion","Confession round — go!","Double spin — two questions!"]}
+};
+
+const FORFEITS={
+  'Social Chaos':{color:'#dc2626',q:["Compliment everyone like you're accepting an Oscar","Give a motivational speech about socks","Roast yourself for 30 seconds","Pretend you're a celebrity being interviewed","Speak only in rhymes for your next turn","Introduce yourself like a reality show contestant","Sell your hairstyle like a luxury product","Explain why pigeons are misunderstood","Announce fake breaking news about yourself","Narrate your life dramatically"]},
+  'Embarrassing Fun':{color:'#b91c1c',q:["Recreate your most awkward moment","Act like your crush just texted you","Pretend to cry over spilled tea","Do your best evil laugh","Pose like a fashion model for 20 seconds","Walk like you're on a runway","Fake a dramatic breakup scene","Act like you forgot how chairs work","Pretend to be buffering","Make your best awkward smile"]},
+  'Performance':{color:'#9a3412',q:["Sing any sentence","Dance with zero rhythm","Beatbox for 10 seconds","Create a new national anthem right now","Perform fake opera","Make a sound effect for every movement","Create a dramatic movie trailer voice","Rap about this room","Hum your favourite song badly","Invent a theme song for yourself"]},
+  'Mind Games':{color:'#7f1d1d',q:["Explain colours to a blind alien","Convince everyone cereal is soup","Defend an obviously terrible opinion","Explain why sleep is overrated","Debate with yourself out loud","Explain love using only math","Describe yourself as a weather forecast","Explain friendship as if it's a business","Sell air as a product","Describe heartbreak like a sports commentator"]},
+  'Group Mode':{color:'#991b1b',q:["Give each player a superhero name","Assign everyone a movie role","Predict everyone's future dramatically","Give everyone a ridiculous life motto","Compliment someone using only food comparisons","Choose someone and imitate them","Describe everyone here as animals","Give relationship advice to the group","Make up a conspiracy about this room","Create someone's villain origin story"]}
+};
+
+const CHAOS_OUTCOMES=["Everyone votes on a custom punishment — majority rules.","You must answer TWO questions in a row before your next turn.","You lose ALL your courage points. Back to zero.","Triple spin — three challenges in a row, chosen by the group.","The group decides your next forfeit. They pick the worst one.","You owe the group a favour — they cash it in anytime tonight.","You switch places with the player who has the most points.","Everyone asks you one personal question. You must answer all of them."];
+
+const CATS=Object.keys(DB);
+const FCATS=Object.keys(FORFEITS);
+const PCOLORS=['#E25822','#1E4D2B','#D2E8FF','#5D372A','#F3E5AB','#EA672D','#8b7355','#2a5a3a','#c4a882','#3d6b4a'];
+
+// ── STATE ─────────────────────────────────────────────────────────
+let players=[],curP=0,skips=3,spinning=false,muted=false;
+let wAngle=0,selCat=-1,usedQ={};
+let fwAngle=0,fwSpinning=false,selFCat=-1,usedFQ={};
+let cdTimer=null,cdSec=0;
+
+// ── AUDIO ─────────────────────────────────────────────────────────
+let actx=null;
+function ac(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();return actx}
+function tone(f,d,t='sine',v=.25){if(muted)return;try{const c=ac(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d);o.start();o.stop(c.currentTime+d)}catch(e){}}
+function tickSfx(){tone(600+Math.random()*300,.035,'square',.12)}
+function revealSfx(){[440,550,660,880].forEach((f,i)=>setTimeout(()=>tone(f,.15,'sine',.2),i*65))}
+function ptSfx(){[330,440,550].forEach((f,i)=>setTimeout(()=>tone(f,.12,'triangle',.18),i*50))}
+function alarmSfx(){if(muted)return;[880,660,880,660].forEach((f,i)=>setTimeout(()=>tone(f,.18,'sawtooth',.35),i*180))}
+function warnSfx(){if(muted)return;tone(200,.08,'square',.45);setTimeout(()=>tone(150,.55,'sawtooth',.35),80)}
+function forfeitSfx(){if(muted)return;[300,250,200,350,400].forEach((f,i)=>setTimeout(()=>tone(f,.1,'sawtooth',.3),i*70))}
+
+// ── SETUP ─────────────────────────────────────────────────────────
+function setMode(el){document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('sel'));el.classList.add('sel')}
+function renderInputs(){
+  document.getElementById('pInputs').innerHTML=players.map((p,i)=>`
+    <div class="p-row">
+      <div class="cpip${PCOLORS.indexOf(p.color)!==-1?' sel':''}" style="background:${p.color}" onclick="cycleColor(${i})"></div>
+      <input type="text" placeholder="Player ${i+1}" value="${p.name}" oninput="players[${i}].name=this.value" maxlength="14">
+      ${i>=2?`<button class="del-btn" onclick="removeP(${i})">✕</button>`:''}
+    </div>`).join('');
+}
+function addPlayer(){if(players.length>=10)return;players.push({name:'',color:PCOLORS[players.length%PCOLORS.length],score:0});renderInputs()}
+function removeP(i){players.splice(i,1);renderInputs()}
+function cycleColor(i){const ci=PCOLORS.indexOf(players[i].color);players[i].color=PCOLORS[(ci+1)%PCOLORS.length];renderInputs()}
+function startGame(){
+  players=players.filter(p=>p.name.trim());
+  if(players.length<2){showToast('add at least 2 players');return}
+  players.forEach(p=>p.score=0);skips=3;curP=0;usedQ={};selCat=-1;
+  showScreen('gameScreen');drawWheel();updateTurn();updateBar();
+  document.getElementById('qCard').classList.remove('show');
+}
+
+// ── SCREENS ───────────────────────────────────────────────────────
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');s.style.display='none'});const s=document.getElementById(id);s.style.display='flex';requestAnimationFrame(()=>requestAnimationFrame(()=>s.classList.add('active')))}
+function goHome(){if(confirm('Return to setup?')){stopCD();document.getElementById('fOverlay').classList.remove('show');showScreen('setupScreen')}}
+function backToGame(){showScreen('gameScreen');if(selCat>=0)drawWheel(selCat);else drawWheel();updateBar()}
+
+// ── MAIN WHEEL ────────────────────────────────────────────────────
+function drawWheel(hi=-1){
+  const cv=document.getElementById('wCanvas'),ctx=cv.getContext('2d');
+  const cx=270,cy=270,r=258,n=CATS.length,arc=(2*Math.PI)/n;
+  ctx.clearRect(0,0,540,540);
+  ctx.beginPath();ctx.arc(cx,cy,r+4,0,2*Math.PI);ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill();
+  for(let i=0;i<n;i++){
+    const s=wAngle+i*arc,e=s+arc;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,s,e);ctx.closePath();
+    ctx.fillStyle=DB[CATS[i]].color+(hi===i?'':'bb');ctx.fill();
+    ctx.strokeStyle='rgba(13,24,16,.5)';ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(s+arc/2);ctx.textAlign='right';
+    ctx.font='bold 16px "DM Mono",monospace';ctx.fillStyle='rgba(255,255,255,.9)';
+    ctx.fillText(DB[CATS[i]].label.split(' ')[0],r-12,5);
+    ctx.font='500 10px "DM Mono",monospace';ctx.fillStyle='rgba(255,255,255,.75)';
+    ctx.fillText(CATS[i].replace(/([A-Z])/g,' $1').trim().toLowerCase(),r-36,5);
+    ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(cx,cy,33,0,2*Math.PI);ctx.fillStyle='#0D1810';ctx.fill();
+  ctx.strokeStyle='rgba(243,229,171,.15)';ctx.lineWidth=1.5;ctx.stroke();
+}
+function getWCat(){const n=CATS.length,arc=(2*Math.PI)/n;let ptr=(-Math.PI/2-wAngle)%(2*Math.PI);if(ptr<0)ptr+=2*Math.PI;return Math.floor(ptr/arc)%n}
+function doSpin(){
+  if(spinning)return;spinning=true;stopCD();
+  document.getElementById('spinBtn').disabled=true;
+  document.getElementById('qCard').classList.remove('show');selCat=-1;
+  const extra=5+Math.random()*6,total=extra*2*Math.PI+Math.random()*2*Math.PI;
+  const dur=3200+Math.random()*1600,t0=performance.now(),startA=wAngle;let lastTick=0;
+  function frame(now){
+    const el=now-t0,t=Math.min(el/dur,1),ease=1-Math.pow(1-t,4);
+    wAngle=startA+total*ease;drawWheel();
+    const deg=((wAngle*180/Math.PI)%360+360)%360,tick=Math.floor(deg/20);
+    if(tick!==lastTick){lastTick=tick;tickSfx()}
+    if(t<1){requestAnimationFrame(frame)}
+    else{spinning=false;selCat=getWCat();drawWheel(selCat);document.getElementById('spinBtn').disabled=false;revealSfx();setTimeout(()=>showQ(selCat),450)}
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── QUESTIONS ─────────────────────────────────────────────────────
+function showQ(ci){
+  const key=CATS[ci],cat=DB[key];
+  if(!usedQ[key])usedQ[key]=[];
+  let avail=cat.q.map((q,i)=>({q,i})).filter(({i})=>!usedQ[key].includes(i));
+  if(!avail.length){usedQ[key]=[];avail=cat.q.map((q,i)=>({q,i}))}
+  const pick=avail[Math.floor(Math.random()*avail.length)];usedQ[key].push(pick.i);
+  const used=(usedQ[key]||[]).length;
+  document.getElementById('qDot').style.background=cat.color;
+  document.getElementById('qCatLbl').textContent=cat.label;document.getElementById('qCatLbl').style.color=cat.color;
+  document.getElementById('qNum').textContent=`${used}/${cat.q.length}`;
+  document.getElementById('qText').textContent=pick.q;
+  document.getElementById('qStripe').style.background=cat.color;
+  document.getElementById('skipLeft').textContent=`skips remaining: ${skips}`;
+  document.getElementById('skipBtn').disabled=false;
+  const card=document.getElementById('qCard');card.classList.remove('show');card.style.borderColor=cat.color+'33';
+  requestAnimationFrame(()=>card.classList.add('show'));
+  startCD();
+}
+
+// ── COUNTDOWN ─────────────────────────────────────────────────────
+function startCD(){
+  stopCD();cdSec=15;
+  const wrap=document.getElementById('cdWrap'),arc=document.getElementById('cdArc'),num=document.getElementById('cdNum');
+  const circ=138.2;wrap.classList.add('show');arc.style.strokeDashoffset='0';num.textContent='15';num.style.color='#ef4444';
+  cdTimer=setInterval(()=>{
+    cdSec--;num.textContent=cdSec;
+    arc.style.strokeDashoffset=circ*(1-cdSec/15);
+    if(cdSec<=5){alarmSfx();num.style.color='#dc2626'}
+    if(cdSec<=0){stopCD();triggerForfeit()}
+  },1000);
+}
+function stopCD(){
+  clearInterval(cdTimer);cdTimer=null;
+  document.getElementById('cdWrap').classList.remove('show');
+  document.getElementById('cdArc').style.strokeDashoffset='0';
+  document.getElementById('cdNum').textContent='15';
+  document.getElementById('cdNum').style.color='#ef4444';
+}
+function skipQ(){stopCD();skips=Math.max(0,skips-1);triggerForfeit()}
+function answered(){
+  stopCD();players[curP].score+=2;ptSfx();doConfetti();
+  curP=(curP+1)%players.length;
+  document.getElementById('qCard').classList.remove('show');
+  updateTurn();updateBar();
+}
+
+// ── FORFEIT ───────────────────────────────────────────────────────
+function triggerForfeit(){
+  document.getElementById('qCard').classList.remove('show');stopCD();warnSfx();
+  document.body.classList.add('shaking');setTimeout(()=>document.body.classList.remove('shaking'),500);
+  const ov=document.getElementById('fOverlay');
+  ov.classList.add('show');
+  document.getElementById('fPlayerSub').textContent=`${players[curP].name} — spin and complete your forfeit`;
+  document.getElementById('fSpinBtn').disabled=false;
+  document.getElementById('fcCard').classList.remove('show');
+  document.getElementById('chaosCard').classList.remove('show');
+  document.getElementById('fCloseBtn').style.display='none';
+  fwAngle=0;drawForfeitWheel();
+}
+
+// ── FORFEIT WHEEL ─────────────────────────────────────────────────
+function drawForfeitWheel(hi=-1){
+  const cv=document.getElementById('fwCanvas'),ctx=cv.getContext('2d');
+  const cx=220,cy=220,r=208,n=FCATS.length,arc=(2*Math.PI)/n;
+  ctx.clearRect(0,0,440,440);
+  const reds=['#dc2626','#b91c1c','#9a3412','#7f1d1d','#991b1b'];
+  for(let i=0;i<n;i++){
+    const s=fwAngle+i*arc,e=s+arc;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,s,e);ctx.closePath();
+    ctx.fillStyle=hi===i?reds[i%reds.length]:(reds[i%reds.length]+'cc');ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(s+arc/2);ctx.textAlign='right';
+    ctx.font='bold 10px "DM Mono",monospace';ctx.fillStyle='rgba(255,200,200,.9)';
+    ctx.fillText(FCATS[i].split(' ').slice(0,2).join(' ').toLowerCase(),r-11,4);
+    ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(cx,cy,28,0,2*Math.PI);ctx.fillStyle='#0D1810';ctx.fill();
+  ctx.strokeStyle='rgba(239,68,68,.3)';ctx.lineWidth=1.5;ctx.stroke();
+}
+function getFWCat(){const n=FCATS.length,arc=(2*Math.PI)/n;let ptr=(-Math.PI/2-fwAngle)%(2*Math.PI);if(ptr<0)ptr+=2*Math.PI;return Math.floor(ptr/arc)%n}
+function spinForfeit(){
+  if(fwSpinning)return;fwSpinning=true;document.getElementById('fSpinBtn').disabled=true;
+  const extra=4+Math.random()*5,total=extra*2*Math.PI+Math.random()*2*Math.PI;
+  const dur=2600+Math.random()*1200,t0=performance.now(),startA=fwAngle;let lastTick=0;
+  function frame(now){
+    const el=now-t0,t=Math.min(el/dur,1),ease=1-Math.pow(1-t,4);
+    fwAngle=startA+total*ease;drawForfeitWheel();
+    const deg=((fwAngle*180/Math.PI)%360+360)%360,tick=Math.floor(deg/15);
+    if(tick!==lastTick){lastTick=tick;tickSfx()}
+    if(t<1){requestAnimationFrame(frame)}
+    else{fwSpinning=false;selFCat=getFWCat();drawForfeitWheel(selFCat);forfeitSfx();setTimeout(()=>showForfeitChallenge(selFCat),400)}
+  }
+  requestAnimationFrame(frame);
+}
+function showForfeitChallenge(ci){
+  const key=FCATS[ci],cat=FORFEITS[key];
+  if(!usedFQ[key])usedFQ[key]=[];
+  let avail=cat.q.map((q,i)=>({q,i})).filter(({i})=>!usedFQ[key].includes(i));
+  if(!avail.length){usedFQ[key]=[];avail=cat.q.map((q,i)=>({q,i}))}
+  const pick=avail[Math.floor(Math.random()*avail.length)];usedFQ[key].push(pick.i);
+  document.getElementById('fcCatTxt').textContent='🎭 '+key;
+  document.getElementById('fcText').textContent=pick.q;
+  document.getElementById('fcCard').classList.add('show');
+  document.getElementById('fCloseBtn').style.display='none';
+}
+function completedForfeit(){players[curP].score+=1;ptSfx();doConfetti();closeForfeit(true)}
+function refuseForfeit(){
+  warnSfx();document.body.classList.add('shaking');setTimeout(()=>document.body.classList.remove('shaking'),500);
+  document.getElementById('fcCard').classList.remove('show');
+  const consequence=CHAOS_OUTCOMES[Math.floor(Math.random()*CHAOS_OUTCOMES.length)];
+  if(consequence.includes('lose ALL')){players[curP].score=0;updateBar()}
+  document.getElementById('chaosConseq').textContent=consequence;
+  document.getElementById('chaosCard').classList.add('show');
+}
+function closeForfeit(advance=true){
+  document.getElementById('fOverlay').classList.remove('show');
+  document.getElementById('fcCard').classList.remove('show');
+  document.getElementById('chaosCard').classList.remove('show');
+  fwSpinning=false;
+  if(advance){curP=(curP+1)%players.length;document.getElementById('qCard').classList.remove('show');updateTurn();updateBar()}
+}
+
+// ── UI ────────────────────────────────────────────────────────────
+function updateTurn(){const p=players[curP];const el=document.getElementById('tName');el.textContent=p.name;el.style.color=p.color;document.getElementById('tNext').textContent=`next up — ${players[(curP+1)%players.length].name}`}
+function updateBar(){document.getElementById('pBar').innerHTML=players.map((p,i)=>`<div class="p-chip${i===curP?' active':''}"><div class="p-pip" style="background:${p.color}">${p.name.charAt(0).toUpperCase()}</div><span class="p-chip-nm">${p.name}</span><span class="p-chip-sc">${p.score}p</span></div>`).join('')}
+function showLB(){const sorted=[...players].sort((a,b)=>b.score-a.score);document.getElementById('lbMeta').textContent=`${players.reduce((s,p)=>s+p.score,0)} points awarded · ${players.length} players`;document.getElementById('lbRows').innerHTML=sorted.map((p,i)=>`<div class="lb-row${i===0?' first':''}"><div class="lb-rank${i===0?' g1':''}">${i===0?'I':i===1?'II':i===2?'III':i+1}</div><div class="lb-dot" style="background:${p.color}">${p.name.charAt(0).toUpperCase()}</div><div class="lb-pnm">${p.name}</div><div class="lb-pts">${p.score} pts</div></div>`).join('');showScreen('lbScreen')}
+function endGame(){players.forEach(p=>p.score=0);skips=3;curP=0;usedQ={};showScreen('setupScreen')}
+function toggleMute(){muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';showToast(muted?'muted':'sound on')}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('on'),1800)}
+function doConfetti(){const cols=['#E25822','#F3E5AB','#1E4D2B','#D2E8FF','#5D372A','#EA672D'];for(let i=0;i<35;i++){const el=document.createElement('div');el.className='cf';el.style.cssText=`left:${10+Math.random()*80}%;width:${5+Math.random()*7}px;height:${5+Math.random()*7}px;background:${cols[Math.floor(Math.random()*cols.length)]};animation-duration:${1.4+Math.random()*1.4}s;animation-delay:${Math.random()*.25}s;transform:rotate(${Math.random()*360}deg)`;document.body.appendChild(el);setTimeout(()=>el.remove(),3000)}}
+
+// INIT
+players=[{name:'Player 1',color:PCOLORS[0],score:0},{name:'Player 2',color:PCOLORS[1],score:0}];
+renderInputs();
+</script>
+</body>
+</html>
